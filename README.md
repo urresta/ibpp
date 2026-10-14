@@ -22,12 +22,63 @@ Plain Python, no dependencies. Works on Linux, macOS and Windows.
 
 ## Install
 
+ibpp needs Python 3.10 or newer and [pipx](https://pipx.pypa.io), which
+installs command-line tools so you can run them from anywhere.
+
+### Linux and macOS
+
 ```sh
+sudo pacman -S python-pipx        # Arch; Debian/Ubuntu: sudo apt install pipx; macOS: brew install pipx
+pipx ensurepath                   # then open a new terminal
 pipx install git+https://github.com/urresta/ibpp
 ```
 
-No pipx? `sudo pacman -S python-pipx` on Arch, `py -m pip install --user pipx`
-on Windows. Or skip installing and run `python -m ibpp` inside this folder.
+### Windows
+
+1. **Install Python.** Open PowerShell or Windows Terminal and run:
+
+   ```powershell
+   winget install Python.Python.3.13
+   ```
+
+   Or download it from [python.org](https://www.python.org/downloads/). If you
+   use the installer, tick **"Add python.exe to PATH"**.
+
+2. **Install pipx**, then close the terminal and open a new one so `ibpp` ends
+   up on your PATH:
+
+   ```powershell
+   py -m pip install --user pipx
+   py -m pipx ensurepath
+   ```
+
+3. **Install ibpp:**
+
+   ```powershell
+   py -m pipx install https://github.com/urresta/ibpp/archive/refs/heads/main.zip
+   ```
+
+   This link doesn't need Git. If you have Git installed,
+   `py -m pipx install git+https://github.com/urresta/ibpp` works too.
+
+4. **Run it:** type `ibpp`. The first run walks you through picking your
+   subjects.
+
+Use **Windows Terminal** (the default on Windows 11) for the arrow-key menus
+and colours. PDFs open in your default PDF app (usually Edge) and are saved
+in `C:\Users\<you>\IB Past Papers`.
+
+**If `ibpp` isn't recognised:** open a new terminal so it picks up the PATH
+change from step 2. `py -m pipx list` shows whether it installed and where.
+
+### Updating and uninstalling
+
+```sh
+pipx install --force <same link you installed from>   # get the latest version
+pipx uninstall ibpp
+```
+
+On Windows, put `py -m` in front: `py -m pipx install --force …`.
 
 ## Usage
 
