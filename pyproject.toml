@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ibpp"
+version = "0.2.0"
+description = "IB past papers from your terminal"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "urresta" }]
+requires-python = ">=3.10"
+dependencies = []
+keywords = ["ib", "international-baccalaureate", "past-papers", "cli", "study"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Education",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Education",
+]
+
+[project.urls]
+Homepage = "https://github.com/urresta/ibpp"
+Issues = "https://github.com/urresta/ibpp/issues"
+
+[project.scripts]
+ibpp = "ibpp.cli:main"
+
+[tool.setuptools]
+packages = ["ibpp"]
