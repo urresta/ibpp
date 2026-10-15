@@ -188,20 +188,27 @@ def select(question: str, options: list[str], default: int = 0) -> int:
                 return index
 
 
-def checkbox(question: str, options: list[str], selected: Iterable[int] = ()) -> list[int]:
-    """Multi-select list: space toggles, enter confirms. Needs at least one pick."""
+def checkbox(question: str, options: list[str], selected: Iterable[int] = (), empty: str = "") -> list[int]:
+    """Multi-select list: space toggles, enter confirms. Needs at least one pick,
+    unless `empty` names what picking nothing means (then it returns [])."""
     chosen = set(selected)
     if not INTERACTIVE:
-        return _plain_checkbox(question, options, chosen)
+        return _plain_checkbox(question, options, chosen, empty)
     index, block, error = 0, _Block(), ""
     with _keys():
         while True:
             lines = [f"{cyan('?')} {bold(question)}"]
-            for i in _window(len(options), index):
+            shown = _window(len(options), index)
+            for i in shown:
                 mark = green("●") if i in chosen else dim("○")
                 text = cyan(options[i]) if i == index else options[i]
                 lines.append(f"{cyan('❯') if i == index else ' '} {mark} {text}")
-            lines.append(red(f"  {error}") if error else dim("  space to select · enter when done"))
+            hint = "space to select · enter when done"
+            if empty:
+                hint += f" · none = {empty.lower()}"
+            if len(shown) < len(options):
+                hint = f"{index + 1}/{len(options)} · {hint}"
+            lines.append(red(f"  {error}") if error else dim(f"  {hint}"))
             block.draw(lines)
 
             key = _read_key()
@@ -213,8 +220,9 @@ def checkbox(question: str, options: list[str], selected: Iterable[int] = ()) ->
                 chosen ^= {index}
                 error = ""
             elif key == "enter":
-                if chosen:
-                    block.close(_answered(question, ", ".join(options[i] for i in sorted(chosen))))
+                if chosen or empty:
+                    answer = ", ".join(options[i] for i in sorted(chosen)) or empty
+                    block.close(_answered(question, answer))
                     return sorted(chosen)
                 error = "Select at least one with space."
 
@@ -271,13 +279,13 @@ def _plain_select(question: str, options: list[str], default: int) -> int:
             return int(answer) - 1
 
 
-def _plain_checkbox(question: str, options: list[str], chosen: set[int]) -> list[int]:
-    print(f"{question} (numbers separated by spaces)")
+def _plain_checkbox(question: str, options: list[str], chosen: set[int], empty: str = "") -> list[int]:
+    print(f"{question} (numbers separated by spaces{f', blank = {empty.lower()}' if empty else ''})")
     for i, option in enumerate(options, 1):
-        print(f"  {i}) {option}")
+        print(f"  {i}) {plain(option)}")
     while True:
         picks = {int(n) - 1 for n in re.findall(r"\d+", input("> ")) if 1 <= int(n) <= len(options)}
-        if picks or chosen:
+        if picks or chosen or empty:
             return sorted(picks or chosen)
 
 

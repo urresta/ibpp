@@ -84,7 +84,7 @@ On Windows, put `py -m` in front: `py -m pipx install --force …`.
 
 ```sh
 ibpp                              # guided mode (first run sets up your subjects)
-ibpp physics 2024                 # pick from 2024's papers
+ibpp physics 2024                 # pick one or more of 2024's papers (space to tick)
 ibpp physics 2019-2023 p2         # random paper 2 from that range
 ibpp math 2023 may p1 tz2 --ms    # that exact paper, plus its markscheme
 ibpp random                       # random paper you haven't done yet

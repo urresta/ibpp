@@ -232,13 +232,13 @@ def pick_random(ctx: Ctx, found: list[Paper]) -> Paper:
     return paper
 
 
-def choose_paper(ctx: Ctx, found: list[Paper]) -> Paper:
+def choose_papers(ctx: Ctx, found: list[Paper]) -> list[Paper]:
     if len(found) == 1:
-        return found[0]
+        return found
     if not ui.INTERACTIVE:
         raise Abort(f"{len(found)} papers match. Narrow it down (p1, tz1, may) or use `ibpp random`.")
-    i = ui.select("Paper", ["Surprise me"] + [paper_row(ctx, p) for p in found])
-    return pick_random(ctx, found) if i == 0 else found[i - 1]
+    picked = ui.checkbox("Papers", [paper_row(ctx, p) for p in found], empty="Surprise me")
+    return [found[i] for i in picked] or [pick_random(ctx, found)]
 
 
 def fetch(ctx: Ctx, choice: SubjectChoice, paper: Paper) -> Path:
@@ -277,29 +277,39 @@ def show_file(ctx: Ctx, choice: SubjectChoice, paper: Paper) -> None:
     print(dim(f"  {pretty_path(path)}"))
 
 
-def study(ctx: Ctx, choice: SubjectChoice, paper: Paper, library: Library) -> None:
-    """Open a paper, then its markscheme once you're done with it."""
-    show_file(ctx, choice, paper)
-    if paper.fallback:
-        print(yellow(f"  There's no {LANGUAGES[ctx.lang]} version of this one, so here's the English paper."))
-    ctx.history.add(paper.path, label(choice), paper.describe())
+def study(ctx: Ctx, choice: SubjectChoice, chosen: list[Paper], library: Library) -> None:
+    """Open the papers, then their markschemes once you're done with them."""
+    single = len(chosen) == 1
+    for paper in chosen:
+        show_file(ctx, choice, paper)
+        if paper.fallback:
+            print(yellow(f"  There's no {LANGUAGES[ctx.lang]} version of this one, so here's the English paper."))
+        ctx.history.add(paper.path, label(choice), paper.describe())
 
-    schemes = papers.markschemes_for(paper, library)
-    if not schemes:
-        print(dim("  No markscheme for this one on ibdocs."))
+    pending = []
+    for paper in chosen:
+        if schemes := papers.markschemes_for(paper, library):
+            pending.append((paper, schemes))
+        else:
+            print(dim(f"  No markscheme for {'this one' if single else paper.describe()} on ibdocs."))
+    if not pending:
         return
+    it = "it" if len(pending) == 1 else "them"
     if not ctx.open_ms:
         if ctx.no_open or not ui.INTERACTIVE:
-            print(dim("  Markscheme available: add --ms to get it too."))
+            print(dim(f"  Markscheme{'' if it == 'it' else 's'} available: add --ms to get {it} too."))
             return
         print()
-        if ui.select("When you're done", ["Open the markscheme", "Skip it"]) == 1:
+        opener = "Open the markscheme" + ("" if it == "it" else "s")
+        if ui.select("When you're done", [opener, f"Skip {it}"]) == 1:
             return
-    if len(schemes) > 1 and ui.INTERACTIVE:
-        options = [f"TZ{s.tz}" if s.tz is not None else s.describe() for s in schemes]
-        schemes = [schemes[ui.select("Markscheme for which time zone?", options)]]
-    for scheme in schemes:
-        show_file(ctx, choice, scheme)
+    for paper, schemes in pending:
+        if len(schemes) > 1 and ui.INTERACTIVE:
+            options = [f"TZ{s.tz}" if s.tz is not None else s.describe() for s in schemes]
+            question = "Markscheme for which time zone?" if single else f"{paper.describe()}: which time zone?"
+            schemes = [schemes[ui.select(question, options)]]
+        for scheme in schemes:
+            show_file(ctx, choice, scheme)
 
 
 # ── commands ─────────────────────────────────────────────────────────────────
@@ -317,8 +327,8 @@ def cmd_find(ctx: Ctx, q: Query) -> None:
     if not q.has_filters:
         return guided(ctx, subject, choice)
     library, found = search(ctx, subject, choice, q)
-    paper = choose_paper(ctx, found) if q.single_year or len(found) == 1 else pick_random(ctx, found)
-    study(ctx, choice, paper, library)
+    chosen = choose_papers(ctx, found) if q.single_year or len(found) == 1 else [pick_random(ctx, found)]
+    study(ctx, choice, chosen, library)
 
 
 def ask_search(ctx: Ctx, subject: Subject, choice: SubjectChoice) -> tuple[Query, Library, list[Paper]]:
@@ -350,8 +360,8 @@ def ask_search(ctx: Ctx, subject: Subject, choice: SubjectChoice) -> tuple[Query
 def guided(ctx: Ctx, subject: Subject, choice: SubjectChoice) -> None:
     q, library, found = ask_search(ctx, subject, choice)
     while True:
-        paper = choose_paper(ctx, found) if q.single_year else pick_random(ctx, found)
-        study(ctx, choice, paper, library)
+        chosen = choose_papers(ctx, found) if q.single_year else [pick_random(ctx, found)]
+        study(ctx, choice, chosen, library)
         print()
         actions = [("again", f"Another from {q.describe()}"), ("new", "New search")]
         if len(ctx.cfg.subjects) > 1:
@@ -372,7 +382,7 @@ def cmd_random(ctx: Ctx, q: Query) -> None:
     subject, choice = resolve_subject(ctx, q)
     header(ctx, choice)
     library, found = search(ctx, subject, choice, q)
-    study(ctx, choice, pick_random(ctx, found), library)
+    study(ctx, choice, [pick_random(ctx, found)], library)
 
 
 def cmd_list(ctx: Ctx, q: Query) -> None:
@@ -519,7 +529,7 @@ def help_text() -> str:
   --refresh                       re-fetch the paper index
 
 {h('Examples')}
-  ibpp physics 2024               pick from 2024's papers
+  ibpp physics 2024               pick one or more of 2024's papers
   ibpp physics 2019-2023 p2       random paper 2 from 2019–2023
   ibpp math 2023 may p1 tz2 --ms  that exact paper, with markscheme"""
 
